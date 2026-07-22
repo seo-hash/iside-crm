@@ -32,8 +32,8 @@ app.use('/api/leads', leadRoutes);
 // Config Check
 app.get('/api/config', (req, res) => {
   res.json({
-    spreadsheetId: process.env.SPREADSHEET_ID,
-    sheetRange: process.env.SHEET_RANGE,
+    spreadsheetId: process.env.SPREADSHEET_ID_DATI,
+    sheetRange: process.env.RANGE_DATI,
     serviceEmail: process.env.SERVICE_ACCOUNT_CLIENT_EMAIL
   });
 });

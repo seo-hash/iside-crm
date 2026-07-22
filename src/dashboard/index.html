@@ -28,9 +28,6 @@
                 <a href="#" class="nav-item active" data-section="leads">
                     <span>Lead</span>
                 </a>
-                <a href="#" class="nav-item" data-section="pipeline">
-                    <span>Pipeline</span>
-                </a>
                 <a href="#" class="nav-item" data-section="analytics">
                     <span>Analisi</span>
                 </a>
@@ -53,11 +50,6 @@
                 <div class="section-header">
                     <h1>Lead</h1>
                     <div class="header-actions">
-                        <select id="sourceSelector" class="source-selector">
-                            <option value="all">Tutte le fonti</option>
-                            <option value="facebook">Facebook Ads</option>
-                            <option value="googleform">Google Form</option>
-                        </select>
                         <button id="exportBtn" class="btn-secondary">Esporta Excel</button>
                     </div>
                 </div>
@@ -84,8 +76,8 @@
                     </div>
                     <div class="stat-card">
                         <div class="stat-info">
-                            <h3>Fonte Principale</h3>
-                            <p id="stat-top-source">Nessuna</p>
+                            <h3>Tipo Evento Top</h3>
+                            <p id="stat-top-source">Nessuno</p>
                         </div>
                     </div>
                 </div>
@@ -93,7 +85,7 @@
                  <!-- Filters -->
                 <div class="filters-bar">
                     <div class="filter-group">
-                        <input type="text" id="searchInput" placeholder="Cerca per sede..." class="filter-input">
+                        <input type="text" id="searchInput" placeholder="Cerca lead..." class="filter-input">
                     </div>
  <div class="filter-group">
     <div class="filter-inline">
@@ -130,69 +122,13 @@
                         </thead>
                         <tbody id="leadsBodyFull">
                             <tr>
-                                <td colspan="9">Caricamento dati...</td>
+                                <td colspan="6">Caricamento dati...</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
             </div>
 
-
-            <!-- PIPELINE SECTION (KANBAN) -->
-            <div id="section-pipeline" class="content-section" style="display: none;">
-                <div class="section-header">
-                    <h1>Pipeline Screening</h1>
-                    <div class="header-actions">
-                         <button id="exportPipelineBtn" class="btn-export">Esporta Lavorati</button>
-                         <input type="text" id="pipelineSearch" placeholder="Cerca candidato..." class="filter-input" style="width: 250px;">
-                         <button id="refreshPipelineBtn" class="btn-secondary">Aggiorna</button>
-                    </div>
-                </div>
-                
-                <div class="pipeline-container">
-                    <div class="kanban-board" id="kanbanBoard">
-                        <div class="kanban-column" data-status="Nuovo">
-                            <div class="column-header">
-                                <h3>Nuovo</h3>
-                                <span class="count">0</span>
-                            </div>
-                            <div class="kanban-cards" id="cards-nuovo"></div>
-                        </div>
-
-                        <div class="kanban-column" data-status="In Valutazione">
-                            <div class="column-header">
-                                <h3>In Valutazione</h3>
-                                <span class="count">0</span>
-                            </div>
-                            <div class="kanban-cards" id="cards-valutazione"></div>
-                        </div>
-
-                        <div class="kanban-column" data-status="Chiamato ma non interessato">
-                            <div class="column-header">
-                                <h3>Chiamato ma non interessato</h3>
-                                <span class="count">0</span>
-                            </div>
-                            <div class="kanban-cards" id="cards-chiamato"></div>
-                        </div>
-                        
-                        <div class="kanban-column" data-status="Convertito">
-                            <div class="column-header">
-                                <h3>Convertito</h3>
-                                <span class="count">0</span>
-                            </div>
-                            <div class="kanban-cards" id="cards-vinti"></div>
-                        </div>
-
-                        <div class="kanban-column" data-status="Non Convertito">
-                            <div class="column-header">
-                                <h3>Non Convertito</h3>
-                                <span class="count">0</span>
-                            </div>
-                            <div class="kanban-cards" id="cards-persi"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
             <!-- ANALYTICS SECTION -->
             <div id="section-analytics" class="content-section" style="display: none;">
@@ -222,8 +158,8 @@
                     </div>
                     <div class="stat-card">
                         <div class="stat-info">
-                            <h3>Lead per Fonte</h3>
-                            <p id="analytics-top-source">Nessuna</p>
+                            <h3>Tipo Evento Top</h3>
+                            <p id="analytics-top-source">Nessuno</p>
                         </div>
                     </div>
                 </div>
@@ -235,24 +171,16 @@
                         <canvas id="chartVolume"></canvas>
                     </div>
                     <div class="chart-card">
-                        <h3>Lead per Fonte</h3>
-                        <canvas id="chartSource"></canvas>
-                    </div>
-                    <div class="chart-card">
                         <h3>Distribuzione per Stato</h3>
                         <canvas id="chartStatus"></canvas>
                     </div>
                     <div class="chart-card">
-                        <h3>Lead per Corso di Formazione</h3>
+                        <h3>Lead per Tipo Evento</h3>
                         <canvas id="chartCourse"></canvas>
                     </div>
                     <div class="chart-card">
-                        <h3>Lead per Sede</h3>
+                        <h3>Lead per Numero Persone</h3>
                         <canvas id="chartSede"></canvas>
-                    </div>
-                    <div class="chart-card">
-                        <h3>Lead per Situazione Occupazionale</h3>
-                        <canvas id="chartOccupation"></canvas>
                     </div>
                 </div>
             </div>
