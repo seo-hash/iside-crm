@@ -28,6 +28,7 @@ body {
     background-color: var(--bg-app);
     color: var(--text-primary);
     line-height: 1.5;
+    overflow-x: hidden;
 }
 
 .app-container {
@@ -487,6 +488,9 @@ body {
 }
 
 @media (max-width: 768px) {
+    .app-container {
+        flex-direction: column;
+    }
     .sidebar {
         width: 100%;
         height: auto;
