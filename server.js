@@ -25,6 +25,11 @@ app.use(express.urlencoded({ extended: true }));
 // Serve Dashboard Statica (Opzionale, utile per hosting unico)
 app.use('/dashboard', express.static(path.join(__dirname, 'src/dashboard')));
 
+// Root - Ridirige al dashboard
+app.get('/', (req, res) => {
+  res.redirect('/dashboard');
+});
+
 // Rotte API - DICHIARAZIONE SINGOLA
 const leadRoutes = require('./src/routes/leads');
 app.use('/api/leads', leadRoutes);
