@@ -1,0 +1,34 @@
+name: Local Config
+version: 1.0.0
+schema: v1
+
+models:
+  - name: "Qwen 2.5 Coder 7B (Edit & Chat)"
+    provider: ollama
+    model: "qwen2.5-coder:7b"
+    apiBase: "http://127.0.0.1:11434"
+  - name: "Qwen 2.5 Coder 3B"
+    provider: ollama
+    model: "qwen2.5-coder:3b"
+    apiBase: "http://127.0.0.1:11434"
+  - name: "Qwen 2.5 Coder 1.5B"
+    provider: ollama
+    model: "qwen2.5-coder:1.5b"
+    apiBase: "http://127.0.0.1:11434"
+
+tabAutocompleteModel:
+  title: "Granite 350m Autocomplete"
+  provider: ollama
+  model: "granite4:350m"
+  apiBase: "http://127.0.0.1:11434"
+
+contextProviders:
+  - name: code
+  - name: docs
+  - name: diff
+
+slashCommands:
+  - name: edit
+    description: Modifica il codice selezionato
+  - name: comment
+    description: Aggiungi commenti

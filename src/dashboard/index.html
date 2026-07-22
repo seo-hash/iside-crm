@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRM Platform - Gestione Lead</title>
+    
+    <!-- Percorso corretto per lo stile (nella stessa cartella di index.html) -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Librerie esterne (Grafici e Excel) -->
+    <script src="https://cdn.jsdelivr.net"></script>
+    <script src="https://cdnjs.cloudflare.com"></script>
+        <!-- Librerie essenziali -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+<aside class="sidebar">
+    <div class="logo">
+        <img src="./assets/logo.png" alt="Logo" class="logo-img">
+        <h2>CRM Platform</h2>
+        <p>Lead Management System</p>
+    </div>
+            <nav class="nav-menu">
+                <a href="#" class="nav-item active" data-section="leads">
+                    <span>Lead</span>
+                </a>
+                <a href="#" class="nav-item" data-section="pipeline">
+                    <span>Pipeline</span>
+                </a>
+                <a href="#" class="nav-item" data-section="analytics">
+                    <span>Analisi</span>
+                </a>
+                <a href="#" class="nav-item" data-section="settings">
+                    <span>Impostazioni</span>
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <div id="connection-status" class="connection-status">● Sincronizzato</div>
+                <button id="refreshBtn" class="refresh-btn">Aggiorna Dati</button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div id="toast" class="toast" style="display: none;"></div>
+
+            <!-- LEADS SECTION -->
+            <div id="section-leads" class="content-section" style="display: block;">
+                <div class="section-header">
+                    <h1>Lead</h1>
+                    <div class="header-actions">
+                        <select id="sourceSelector" class="source-selector">
+                            <option value="all">Tutte le fonti</option>
+                            <option value="facebook">Facebook Ads</option>
+                            <option value="googleform">Google Form</option>
+                        </select>
+                        <button id="exportBtn" class="btn-secondary">Esporta Excel</button>
+                    </div>
+                </div>
+
+                <!-- Stats Cards -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-info">
+                            <h3>Totale Lead</h3>
+                            <p id="stat-total">0</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-info">
+                            <h3>Ultimi 7 Giorni</h3>
+                            <p id="stat-new">0</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-info">
+                            <h3>Tasso Conversione</h3>
+                            <p id="stat-conv-rate">0%</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-info">
+                            <h3>Fonte Principale</h3>
+                            <p id="stat-top-source">Nessuna</p>
+                        </div>
+                    </div>
+                </div>
+
+                 <!-- Filters -->
+                <div class="filters-bar">
+                    <div class="filter-group">
+                        <input type="text" id="searchInput" placeholder="Cerca per sede..." class="filter-input">
+                    </div>
+ <div class="filter-group">
+    <div class="filter-inline">
+        <input type="date" id="dateStart" class="filter-input" title="Da data">
+        <span style="align-self: center; padding: 0 5px;">-</span>
+        <input type="date" id="dateEnd" class="filter-input" title="A data">
+        <button id="clearDateRange" class="clear-filter" title="Resetta date">×</button>
+    </div>
+</div>
+
+                    <div class="filter-group">
+                        <select id="statusFilter" class="filter-select">
+                            <option value="Tutti">Tutti gli stati</option>
+                            <option value="Nuovo">Nuovo</option>
+                            <option value="Da Chiamare">Da Chiamare</option>
+                            <option value="Chiamato - Interessato">Chiamato - Interessato</option>
+                            <option value="Chiamato - Non Confermata">Chiamato - Non Confermata</option>
+                            <option value="Convertito">Convertito</option>
+                            <option value="Non Interessato">Non Interessato</option>
+                            <option value="Non Raggiungibile">Non Raggiungibile</option>
+                        </select>
+                    </div>
+                </div>
+
+
+
+                <!-- Leads Table -->
+                <div class="table-container">
+                    <table class="leads-table">
+                        <thead id="leadsHeadFull">
+                            <tr>
+                                <th>Caricamento...</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leadsBodyFull">
+                            <tr>
+                                <td colspan="9">Caricamento dati...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+
+            <!-- PIPELINE SECTION (KANBAN) -->
+            <div id="section-pipeline" class="content-section" style="display: none;">
+                <div class="section-header">
+                    <h1>Pipeline Screening</h1>
+                    <div class="header-actions">
+                         <button id="exportPipelineBtn" class="btn-export">Esporta Lavorati</button>
+                         <input type="text" id="pipelineSearch" placeholder="Cerca candidato..." class="filter-input" style="width: 250px;">
+                         <button id="refreshPipelineBtn" class="btn-secondary">Aggiorna</button>
+                    </div>
+                </div>
+                
+                <div class="pipeline-container">
+                    <div class="kanban-board" id="kanbanBoard">
+                        <div class="kanban-column" data-status="Nuovo">
+                            <div class="column-header">
+                                <h3>Nuovo</h3>
+                                <span class="count">0</span>
+                            </div>
+                            <div class="kanban-cards" id="cards-nuovo"></div>
+                        </div>
+
+                        <div class="kanban-column" data-status="In Valutazione">
+                            <div class="column-header">
+                                <h3>In Valutazione</h3>
+                                <span class="count">0</span>
+                            </div>
+                            <div class="kanban-cards" id="cards-valutazione"></div>
+                        </div>
+
+                        <div class="kanban-column" data-status="Chiamato ma non interessato">
+                            <div class="column-header">
+                                <h3>Chiamato ma non interessato</h3>
+                                <span class="count">0</span>
+                            </div>
+                            <div class="kanban-cards" id="cards-chiamato"></div>
+                        </div>
+                        
+                        <div class="kanban-column" data-status="Convertito">
+                            <div class="column-header">
+                                <h3>Convertito</h3>
+                                <span class="count">0</span>
+                            </div>
+                            <div class="kanban-cards" id="cards-vinti"></div>
+                        </div>
+
+                        <div class="kanban-column" data-status="Non Convertito">
+                            <div class="column-header">
+                                <h3>Non Convertito</h3>
+                                <span class="count">0</span>
+                            </div>
+                            <div class="kanban-cards" id="cards-persi"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ANALYTICS SECTION -->
+            <div id="section-analytics" class="content-section" style="display: none;">
+                <div class="section-header">
+                    <h1>Analytics</h1>
+                </div>
+
+                <!-- Stats Summary -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-info">
+                            <h3>Totale Lead</h3>
+                            <p id="analytics-total">0</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-info">
+                            <h3>Tasso Conversione</h3>
+                            <p id="analytics-conversion">0%</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-info">
+                            <h3>Lead Ultimi 30gg</h3>
+                            <p id="analytics-last30">0</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-info">
+                            <h3>Lead per Fonte</h3>
+                            <p id="analytics-top-source">Nessuna</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Grid -->
+                <div class="analytics-grid">
+                    <div class="chart-card">
+                        <h3>Andamento Lead (Ultimi 7 giorni)</h3>
+                        <canvas id="chartVolume"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <h3>Lead per Fonte</h3>
+                        <canvas id="chartSource"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <h3>Distribuzione per Stato</h3>
+                        <canvas id="chartStatus"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <h3>Lead per Corso di Formazione</h3>
+                        <canvas id="chartCourse"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <h3>Lead per Sede</h3>
+                        <canvas id="chartSede"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <h3>Lead per Situazione Occupazionale</h3>
+                        <canvas id="chartOccupation"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SETTINGS SECTION -->
+            <div id="section-settings" class="content-section" style="display: none;">
+                <div class="section-header">
+                    <h1>Impostazioni</h1>
+                </div>
+                <div class="settings-card">
+                    <h3>Configurazione Google Sheets</h3>
+                    <div class="settings-item">
+                        <label>Spreadsheet ID:</label>
+                        <span id="cfg-spreadsheet-id">N/A</span>
+                    </div>
+                    <div class="settings-item">
+                        <label>Sheet Range:</label>
+                        <span id="cfg-sheet-range">N/A</span>
+                    </div>
+                    <div class="settings-item">
+                        <label>Service Account Email:</label>
+                        <span id="cfg-client-email">N/A</span>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
