@@ -32,14 +32,18 @@ router.get('/all-data', async (req, res) => {
         })
       : Promise.resolve([]);
 
-    const [googleFormRows, facebookRows] = await Promise.all([
+    const [googleFormRows, facebookRows, compleanniRows, eventiRows] = await Promise.all([
       readSheet(process.env.SPREADSHEET_ID_MODULO, process.env.RANGE_MODULO),  // Google Form
-      readSheet(process.env.SPREADSHEET_ID_DATI, process.env.RANGE_DATI)       // Facebook Ads
+      readSheet(process.env.SPREADSHEET_ID_DATI, process.env.RANGE_DATI),      // Facebook Ads
+      readSheet(process.env.SPREADSHEET_ID_DATI, process.env.RANGE_COMPLEANNI), // Compleanno_bimbi
+      readSheet(process.env.SPREADSHEET_ID_DATI, process.env.RANGE_EVENTI)      // Eventi_privati_aziendali
     ]);
 
     console.log(`✅ Google Form: ${googleFormRows?.length || 0} righe lette`);
     console.log(`✅ Facebook Ads: ${facebookRows?.length || 0} righe lette`);
-    
+    console.log(`✅ Compleanno_bimbi: ${compleanniRows?.length || 0} righe lette`);
+    console.log(`✅ Eventi_privati_aziendali: ${eventiRows?.length || 0} righe lette`);
+
     if (googleFormRows && googleFormRows.length > 0) {
       console.log('📋 Google Form headers:', googleFormRows[0]);
     }
@@ -52,6 +56,8 @@ router.get('/all-data', async (req, res) => {
     const allData = {
       googleFormLeads: googleFormRows || [],  // ← ATTENZIONE: nome corretto per frontend
       facebookLeads: facebookRows || [],      // ← ATTENZIONE: nome corretto per frontend
+      compleanniLeads: compleanniRows || [],
+      eventiLeads: eventiRows || [],
       stats: stats,
       config: {
         spreadsheetId: process.env.SPREADSHEET_ID_DATI,
@@ -89,11 +95,16 @@ router.patch('/:rowIndex/status', async (req, res) => {
     if (!status) return res.status(400).json({ error: 'Nuovo stato richiesto.' });
     
     console.log(`🔄 Aggiornamento stato riga ${rowIndex}, source: ${source}, nuovo stato: ${status}`);
-    
-    // Unica sorgente: foglio Facebook Ads (Meta Lead Ads)
+
     // Colonne native del foglio: A..Q; R = Stato CRM (interno), S = Data Lavorazione (interno)
+    const RANGE_BY_SOURCE = {
+      facebook: process.env.RANGE_DATI,
+      compleanni: process.env.RANGE_COMPLEANNI,
+      eventi: process.env.RANGE_EVENTI
+    };
+
     const sId = process.env.SPREADSHEET_ID_DATI;
-    const sRange = process.env.RANGE_DATI;
+    const sRange = RANGE_BY_SOURCE[source] || process.env.RANGE_DATI;
     const statusColumn = 'R';
     const workedColumn = 'S';
 

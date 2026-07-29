@@ -211,6 +211,34 @@ body {
     color: var(--primary);
 }
 
+/* Lead Type Tabs */
+.lead-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.lead-tab {
+    padding: 0.6rem 1rem;
+    border: none;
+    background: none;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+}
+
+.lead-tab:hover {
+    color: var(--primary);
+}
+
+.lead-tab.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+}
+
 /* Filters */
 .filters-bar {
     display: flex;

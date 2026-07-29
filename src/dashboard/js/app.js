@@ -11,9 +11,14 @@ const META_COL = {
     lavorazione: 18
 };
 
+let rawBySource = { facebook: [], compleanni: [], eventi: [] };
+let currentSource = 'tutti';
 let rawLeads = [];
 let allLeads = [];
-let currentHeaders = ["Data", "Nome Completo", "Telefono", "Tipo Evento", "N° Persone", "Stato"];
+const SOURCE_LABELS = { facebook: 'Eventi Piscina', compleanni: 'Compleanno Bimbi', eventi: 'Eventi Privati/Aziendali' };
+const HEADERS_DEFAULT = ["Data", "Nome Completo", "Telefono", "Tipo Evento", "N° Persone", "Stato"];
+const HEADERS_TUTTI = ["Data", "Nome Completo", "Telefono", "Tipo Evento", "N° Persone", "Origine", "Stato"];
+let currentHeaders = HEADERS_TUTTI;
 let chartInstances = {};
 let currentStats = {};
 
@@ -23,6 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchData();
     initNavigation();
     initFilters();
+    initLeadTabs();
 
     setInterval(fetchData, 300000);
     document.getElementById('refreshBtn').addEventListener('click', () => {
@@ -65,11 +71,14 @@ function updateStatusIndicator(isOnline) {
 function processAllData(data) {
     if (!data) return;
 
-    const rawFacebook = data.facebookLeads || [];
+    const stripHeader = (rows) => (Array.isArray(rows) && rows.length > 1) ? rows.slice(1) : [];
+
+    rawBySource.facebook = stripHeader(data.facebookLeads);
+    rawBySource.compleanni = stripHeader(data.compleanniLeads);
+    rawBySource.eventi = stripHeader(data.eventiLeads);
+
     const stats = data.stats || {};
     const config = data.config || {};
-
-    rawLeads = (Array.isArray(rawFacebook) && rawFacebook.length > 1) ? rawFacebook.slice(1) : [];
 
     currentStats = stats;
     updateTableStructure();
@@ -77,6 +86,20 @@ function processAllData(data) {
     renderAnalyticsStats(stats);
     renderChartsWithRealData();
     renderSettings(config);
+}
+
+function initLeadTabs() {
+    document.querySelectorAll('.lead-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            currentSource = tab.dataset.source;
+            document.querySelectorAll('.lead-tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            updateTableStructure();
+            renderStatsCards(currentStats);
+            renderAnalyticsStats(currentStats);
+            renderChartsWithRealData();
+        });
+    });
 }
 
 function saveToLocalStorage(data) {
@@ -123,15 +146,28 @@ function formatDate(dateStr) {
     return d.toLocaleDateString('it-IT');
 }
 
+function statoIndex() {
+    return currentHeaders.length - 1;
+}
+
 function updateTableStructure() {
-    allLeads = rawLeads.map((row, i) => mapMetaLead(row, i + 2));
+    if (currentSource === 'tutti') {
+        currentHeaders = HEADERS_TUTTI;
+        allLeads = ['facebook', 'compleanni', 'eventi'].flatMap(source =>
+            (rawBySource[source] || []).map((row, i) => mapMetaLead(row, i + 2, source, true))
+        );
+    } else {
+        currentHeaders = HEADERS_DEFAULT;
+        rawLeads = rawBySource[currentSource] || [];
+        allLeads = rawLeads.map((row, i) => mapMetaLead(row, i + 2, currentSource, false));
+    }
     identifyDuplicates(allLeads);
     renderTableUnified(currentHeaders, allLeads);
 }
 
 // Converte una riga grezza del foglio Meta Lead Ads nella riga unificata usata dalla UI:
-// [data, nome, telefono, tipoEvento, nPersone, stato, meta]
-function mapMetaLead(row, rowIndex) {
+// [data, nome, telefono, tipoEvento, nPersone, (origine), stato, meta]
+function mapMetaLead(row, rowIndex, source = 'facebook', includeOrigin = false) {
     const dataRaw = row[META_COL.data];
     let dataFormattata = '-';
     if (dataRaw) {
@@ -145,15 +181,20 @@ function mapMetaLead(row, rowIndex) {
     // Il numero arriva dal foglio con prefisso "p:" (formato Meta)
     const tel = (row[META_COL.tel] || '-').replace(/^p:/, '');
 
-    return [
+    const baseRow = [
         dataFormattata,
         row[META_COL.nome] || '-',
         tel,
         row[META_COL.tipoEvento] || '-',
-        row[META_COL.nPersone] || '-',
-        stato,
+        row[META_COL.nPersone] || '-'
+    ];
+    if (includeOrigin) baseRow.push(SOURCE_LABELS[source] || source);
+    baseRow.push(stato);
+
+    return [
+        ...baseRow,
         {
-            source: 'facebook',
+            source,
             originalIndex: rowIndex,
             isDuplicate: false,
             dataInserimento: dataRaw,
@@ -284,7 +325,7 @@ function renderStatsCards(stats) {
     if (newElement) newElement.innerText = newLeadsCount;
 
     let convertedCount = 0;
-    allLeads.forEach(row => { if (row[5] === 'Convertito') convertedCount++; });
+    allLeads.forEach(row => { if (row[statoIndex()] === 'Convertito') convertedCount++; });
 
     const conversionRate = allLeads.length > 0 ? ((convertedCount / allLeads.length) * 100).toFixed(1) : 0;
     const convRateElement = document.getElementById('stat-conv-rate');
@@ -303,7 +344,7 @@ function renderAnalyticsStats(stats) {
     if (totalElement) totalElement.innerText = allLeads.length || 0;
 
     let convertedCount = 0;
-    allLeads.forEach(row => { if (row[5] === 'Convertito') convertedCount++; });
+    allLeads.forEach(row => { if (row[statoIndex()] === 'Convertito') convertedCount++; });
 
     const conversionRate = allLeads.length > 0 ? ((convertedCount / allLeads.length) * 100).toFixed(1) : 0;
     const convElement = document.getElementById('analytics-conversion');
@@ -352,7 +393,7 @@ function renderChartsWithRealData() {
     // Calcola distribuzione per stato
     const statusMap = {};
     allLeads.forEach(row => {
-        const stato = row[5];
+        const stato = row[statoIndex()];
         if (stato && stato !== '-') {
             statusMap[stato] = (statusMap[stato] || 0) + 1;
         }
@@ -477,7 +518,7 @@ function initFilters() {
             const matchesSearch = searchText === '' || rowText.includes(searchText);
 
             // Filtro stato
-            const stato = row[5] || '';
+            const stato = row[statoIndex()] || '';
             const matchesStatus = selectedStatus === 'Tutti' || stato === selectedStatus;
 
             // Filtro date
