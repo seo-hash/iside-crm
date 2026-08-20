@@ -48,6 +48,7 @@ const HEADERS_TUTTI = ["Data", "Nome Completo", "Telefono", "Tipo Evento", "N° 
 let currentHeaders = HEADERS_TUTTI;
 let chartInstances = {};
 let currentStats = {};
+let applyActiveFilters = null;
 
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -109,6 +110,7 @@ function processAllData(data) {
 
     currentStats = stats;
     updateTableStructure();
+    if (applyActiveFilters) applyActiveFilters();
     renderStatsCards(stats);
     renderAnalyticsStats(stats);
     renderChartsWithRealData();
@@ -122,6 +124,7 @@ function initLeadTabs() {
             document.querySelectorAll('.lead-tab').forEach(t => t.classList.remove('active'));
             tab.classList.add('active');
             updateTableStructure();
+            if (applyActiveFilters) applyActiveFilters();
             renderStatsCards(currentStats);
             renderAnalyticsStats(currentStats);
             renderChartsWithRealData();
@@ -657,20 +660,25 @@ function renderChartsWithRealData() {
         });
     }
 }
+// Data di partenza fissa per il filtro lead: 22/07/2026
+const DEFAULT_DATE_START = '2026-07-22';
+
 function initFilters() {
     const searchInput = document.getElementById('searchInput');
     const statusFilter = document.getElementById('statusFilter');
     const dateStart = document.getElementById('dateStart');
     const dateEnd = document.getElementById('dateEnd');
     const clearDateBtn = document.getElementById('clearDateRange');
-    
+
     // Verifica elementi essenziali
     if (!searchInput || !statusFilter) {
         console.error('Elementi filtro non trovati');
         return;
     }
-    
-    // Funzione per parsare data in formato italiano DD/MM/YYYY
+
+    if (dateStart && !dateStart.value) dateStart.value = DEFAULT_DATE_START;
+
+    // Funzione per parsare data (gg/mm/aaaa oppure aaaa-mm-gg) in un oggetto Date confrontabile
     const parseDate = (dateStr) => {
         if (!dateStr || dateStr === '-') return null;
         try {
@@ -678,30 +686,21 @@ function initFilters() {
                 const [day, month, year] = dateStr.split('/');
                 return new Date(year, month - 1, day);
             } else if (dateStr.includes('-')) {
-                return new Date(dateStr);
+                const [year, month, day] = dateStr.split('-');
+                return new Date(year, month - 1, day);
             }
             return null;
         } catch(e) {
             return null;
         }
     };
-    
-    // Funzione per formattare data input in DD/MM/YYYY per confronto
-    const formatDateForCompare = (dateInput) => {
-        if (!dateInput) return null;
-        const [year, month, day] = dateInput.split('-');
-        return `${day}/${month}/${year}`;
-    };
-    
+
     const filterLeads = () => {
         const searchText = searchInput.value.toLowerCase();
         const selectedStatus = statusFilter.value;
-        const startDate = dateStart ? dateStart.value : '';
-        const endDate = dateEnd ? dateEnd.value : '';
-        
-        const startDateFormatted = startDate ? formatDateForCompare(startDate) : null;
-        const endDateFormatted = endDate ? formatDateForCompare(endDate) : null;
-        
+        const startDate = dateStart ? parseDate(dateStart.value) : null;
+        const endDate = dateEnd ? parseDate(dateEnd.value) : null;
+
         const filtered = allLeads.filter(row => {
             // Filtro ricerca
             const rowText = row.join(' ').toLowerCase();
@@ -711,20 +710,16 @@ function initFilters() {
             const stato = row[statoIndex()] || '';
             const matchesStatus = selectedStatus === 'Tutti' || stato === selectedStatus;
 
-            // Filtro date
+            // Filtro date (confronto reale su oggetti Date, non su stringhe)
             let matchesDate = true;
-            const leadDate = row[0]; // Data in formato DD/MM/YYYY
+            const leadDate = parseDate(row[0]);
 
-            if (startDateFormatted && leadDate && leadDate !== '-') {
-                if (startDateFormatted && leadDate < startDateFormatted) {
-                    matchesDate = false;
-                }
+            if (startDate && leadDate && leadDate < startDate) {
+                matchesDate = false;
             }
 
-            if (endDateFormatted && leadDate && leadDate !== '-') {
-                if (endDateFormatted && leadDate > endDateFormatted) {
-                    matchesDate = false;
-                }
+            if (endDate && leadDate && leadDate > endDate) {
+                matchesDate = false;
             }
 
             return matchesSearch && matchesStatus && matchesDate;
@@ -733,6 +728,8 @@ function initFilters() {
         renderTableUnified(currentHeaders, filtered);
     };
 
+    applyActiveFilters = filterLeads;
+
     // Event listeners
     searchInput.addEventListener('input', filterLeads);
     statusFilter.addEventListener('change', filterLeads);
@@ -740,14 +737,16 @@ function initFilters() {
     if (dateStart) dateStart.addEventListener('change', filterLeads);
     if (dateEnd) dateEnd.addEventListener('change', filterLeads);
 
-    // Reset date
+    // Reset date: torna alla data di partenza fissa, non a un campo vuoto
     if (clearDateBtn) {
         clearDateBtn.addEventListener('click', () => {
-            if (dateStart) dateStart.value = '';
+            if (dateStart) dateStart.value = DEFAULT_DATE_START;
             if (dateEnd) dateEnd.value = '';
             filterLeads();
         });
     }
+
+    filterLeads();
 
     console.log('✅ Filtri inizializzati correttamente (calendario incluso)');
 }
