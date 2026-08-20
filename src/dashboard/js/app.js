@@ -663,6 +663,15 @@ function renderChartsWithRealData() {
 // Data di partenza fissa per il filtro lead: 22/07/2026
 const DEFAULT_DATE_START = '2026-07-22';
 
+// Data odierna (nel fuso dell'utente) in formato aaaa-mm-gg, per il campo <input type="date">
+function todayAsDateInputValue() {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
+
 function initFilters() {
     const searchInput = document.getElementById('searchInput');
     const statusFilter = document.getElementById('statusFilter');
@@ -677,6 +686,7 @@ function initFilters() {
     }
 
     if (dateStart && !dateStart.value) dateStart.value = DEFAULT_DATE_START;
+    if (dateEnd && !dateEnd.value) dateEnd.value = todayAsDateInputValue();
 
     // Funzione per parsare data (gg/mm/aaaa oppure aaaa-mm-gg) in un oggetto Date confrontabile
     const parseDate = (dateStr) => {
@@ -741,7 +751,7 @@ function initFilters() {
     if (clearDateBtn) {
         clearDateBtn.addEventListener('click', () => {
             if (dateStart) dateStart.value = DEFAULT_DATE_START;
-            if (dateEnd) dateEnd.value = '';
+            if (dateEnd) dateEnd.value = todayAsDateInputValue();
             filterLeads();
         });
     }
