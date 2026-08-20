@@ -11,13 +11,40 @@ const META_COL = {
     lavorazione: 18
 };
 
+// Note e Prezzo sono gestiti solo lato CRM (localStorage), non sul foglio Google
+const CRM_DETAILS_KEY = 'crm_lead_details';
+
+function loadCrmDetails() {
+    try { return JSON.parse(localStorage.getItem(CRM_DETAILS_KEY)) || {}; } catch(e) { return {}; }
+}
+
+function saveCrmDetails(details) {
+    try { localStorage.setItem(CRM_DETAILS_KEY, JSON.stringify(details)); } catch(e) {}
+}
+
+function crmDetailKey(source, rowId) {
+    return `${source}_${rowId}`;
+}
+
+function getCrmDetail(source, rowId) {
+    const details = loadCrmDetails();
+    return details[crmDetailKey(source, rowId)] || { note: '', prezzo: '' };
+}
+
+function setCrmDetail(source, rowId, patch) {
+    const details = loadCrmDetails();
+    const key = crmDetailKey(source, rowId);
+    details[key] = { ...(details[key] || { note: '', prezzo: '' }), ...patch };
+    saveCrmDetails(details);
+}
+
 let rawBySource = { facebook: [], compleanni: [], eventi: [] };
 let currentSource = 'tutti';
 let rawLeads = [];
 let allLeads = [];
 const SOURCE_LABELS = { facebook: 'Eventi Piscina', compleanni: 'Compleanno Bimbi', eventi: 'Eventi Privati/Aziendali' };
-const HEADERS_DEFAULT = ["Data", "Nome Completo", "Telefono", "Tipo Evento", "N° Persone", "Stato"];
-const HEADERS_TUTTI = ["Data", "Nome Completo", "Telefono", "Tipo Evento", "N° Persone", "Origine", "Stato"];
+const HEADERS_DEFAULT = ["Data", "Nome Completo", "Telefono", "Tipo Evento", "N° Persone", "Stato", "Note", "Prezzo"];
+const HEADERS_TUTTI = ["Data", "Nome Completo", "Telefono", "Tipo Evento", "N° Persone", "Origine", "Stato", "Note", "Prezzo"];
 let currentHeaders = HEADERS_TUTTI;
 let chartInstances = {};
 let currentStats = {};
@@ -147,6 +174,14 @@ function formatDate(dateStr) {
 }
 
 function statoIndex() {
+    return currentHeaders.length - 3;
+}
+
+function noteIndex() {
+    return currentHeaders.length - 2;
+}
+
+function prezzoIndex() {
     return currentHeaders.length - 1;
 }
 
@@ -178,6 +213,10 @@ function mapMetaLead(row, rowIndex, source = 'facebook', includeOrigin = false) 
     let stato = row[META_COL.stato] || 'Nuovo';
     if (stato === '') stato = 'Nuovo';
 
+    const crmDetail = getCrmDetail(source, rowIndex);
+    const note = crmDetail.note || '';
+    const prezzo = crmDetail.prezzo || '';
+
     // Il numero arriva dal foglio con prefisso "p:" (formato Meta)
     const tel = (row[META_COL.tel] || '-').replace(/^p:/, '');
 
@@ -189,7 +228,7 @@ function mapMetaLead(row, rowIndex, source = 'facebook', includeOrigin = false) 
         row[META_COL.nPersone] || '-'
     ];
     if (includeOrigin) baseRow.push(SOURCE_LABELS[source] || source);
-    baseRow.push(stato);
+    baseRow.push(stato, note, prezzo);
 
     return [
         ...baseRow,
@@ -229,7 +268,9 @@ function renderTableUnified(headers, leads) {
         return;
     }
 
-    const statoIdx = headers.length - 1;
+    const statoIdx = headers.length - 3;
+    const noteIdx = headers.length - 2;
+    const prezzoIdx = headers.length - 1;
 
     thead.innerHTML = '<tr>' + headers.map(h => `<th>${h}</th>`).join('') + '</tr>';
     tbody.innerHTML = '';
@@ -250,6 +291,12 @@ function renderTableUnified(headers, leads) {
 
             if (i === statoIdx) {
                 td.innerHTML = getStatusSelectHTML(meta.originalIndex, meta.source, val);
+            } else if (i === noteIdx) {
+                td.className = 'note-cell';
+                td.appendChild(buildNoteCell(meta.originalIndex, meta.source, row[i] || ''));
+            } else if (i === prezzoIdx) {
+                td.className = 'prezzo-cell';
+                td.appendChild(buildPrezzoCell(meta.originalIndex, meta.source, row[i] || '', row[statoIdx]));
             } else if (i === 1 && meta.isDuplicate) {
                 td.innerHTML = val;
             } else {
@@ -259,6 +306,149 @@ function renderTableUnified(headers, leads) {
         }
         tbody.appendChild(tr);
     });
+}
+
+function buildNoteCell(rowId, source, note) {
+    const cleanNote = (note && note !== '-') ? note : '';
+    const hasNote = cleanNote.trim() !== '';
+
+    const wrap = document.createElement('div');
+    wrap.className = 'note-wrap';
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'note-btn' + (hasNote ? ' has-note' : '');
+    btn.title = hasNote ? cleanNote : 'Aggiungi nota';
+    btn.textContent = '📝';
+    btn.dataset.value = cleanNote;
+    btn.addEventListener('click', () => openNoteEditor(btn, rowId, source));
+
+    wrap.appendChild(btn);
+    return wrap;
+}
+
+let activeNotePopover = null;
+
+function positionPopover(popover, anchor) {
+    const rect = anchor.getBoundingClientRect();
+    const margin = 8;
+    const popW = popover.offsetWidth || 240;
+    let left = rect.left;
+    if (left + popW > window.innerWidth - margin) {
+        left = Math.max(margin, window.innerWidth - popW - margin);
+    }
+    let top = rect.bottom + 4;
+    const popH = popover.offsetHeight || 150;
+    if (top + popH > window.innerHeight - margin) {
+        top = Math.max(margin, rect.top - popH - 4);
+    }
+    popover.style.left = `${left}px`;
+    popover.style.top = `${top}px`;
+}
+
+function openNoteEditor(btn, rowId, source) {
+    if (activeNotePopover) {
+        const wasSameBtn = activeNotePopover.btn === btn;
+        activeNotePopover.close();
+        if (wasSameBtn) return;
+    }
+
+    const popover = document.createElement('div');
+    popover.className = 'note-popover';
+
+    const ta = document.createElement('textarea');
+    ta.placeholder = 'Scrivi una nota...';
+    ta.value = btn.dataset.value || '';
+
+    const actions = document.createElement('div');
+    actions.className = 'note-popover-actions';
+
+    const saveBtn = document.createElement('button');
+    saveBtn.type = 'button';
+    saveBtn.className = 'note-save-btn';
+    saveBtn.textContent = 'Salva';
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.type = 'button';
+    cancelBtn.className = 'note-cancel-btn';
+    cancelBtn.textContent = 'Annulla';
+
+    actions.appendChild(saveBtn);
+    actions.appendChild(cancelBtn);
+    popover.appendChild(ta);
+    popover.appendChild(actions);
+    document.body.appendChild(popover);
+    positionPopover(popover, btn);
+    ta.focus();
+
+    const reposition = () => positionPopover(popover, btn);
+    window.addEventListener('resize', reposition);
+    window.addEventListener('scroll', reposition, true);
+
+    const close = () => {
+        window.removeEventListener('resize', reposition);
+        window.removeEventListener('scroll', reposition, true);
+        document.removeEventListener('mousedown', onOutsideClick, true);
+        popover.remove();
+        if (activeNotePopover && activeNotePopover.popover === popover) activeNotePopover = null;
+    };
+
+    const onOutsideClick = (e) => {
+        if (!popover.contains(e.target) && e.target !== btn) close();
+    };
+    document.addEventListener('mousedown', onOutsideClick, true);
+
+    activeNotePopover = { popover, btn, close };
+
+    cancelBtn.addEventListener('click', close);
+    saveBtn.addEventListener('click', async () => {
+        const value = ta.value;
+        const ok = await saveLeadDetails(rowId, source, { note: value });
+        if (ok) {
+            const hasNote = value.trim() !== '';
+            btn.dataset.value = value;
+            btn.classList.toggle('has-note', hasNote);
+            btn.title = hasNote ? value : 'Aggiungi nota';
+        }
+        close();
+    });
+}
+
+function buildPrezzoCell(rowId, source, prezzo, stato) {
+    const isChiuso = stato === 'Convertito';
+    const value = (prezzo && prezzo !== '-') ? prezzo : '';
+
+    const wrap = document.createElement('div');
+    wrap.className = 'prezzo-wrap' + (isChiuso ? ' prezzo-chiuso' : '');
+
+    const currency = document.createElement('span');
+    currency.className = 'prezzo-currency';
+    currency.textContent = '€';
+
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.min = '0';
+    input.step = '1';
+    input.className = 'prezzo-input';
+    input.placeholder = '0';
+    input.value = value;
+
+    const persist = async () => {
+        const ok = await saveLeadDetails(rowId, source, { prezzo: input.value });
+        wrap.classList.toggle('prezzo-saved', ok);
+        if (ok) setTimeout(() => wrap.classList.remove('prezzo-saved'), 1200);
+    };
+    input.addEventListener('change', persist);
+
+    wrap.appendChild(currency);
+    wrap.appendChild(input);
+    return wrap;
+}
+
+async function saveLeadDetails(rowId, source, payload) {
+    setCrmDetail(source, rowId, payload);
+    showToast('Salvato');
+    return true;
 }
 
 function getStatusSelectHTML(rowId, source, currentStatus) {
@@ -630,6 +820,22 @@ function exportExcel() {
             const val = originalSelects[index].value;
             const parent = select.parentElement;
             parent.textContent = val || "Nuovo";
+        });
+
+        // Trasformiamo gli input Prezzo in testo semplice
+        const originalPrezzi = table.querySelectorAll('.prezzo-input');
+        const clonePrezzi = tableClone.querySelectorAll('.prezzo-input');
+        clonePrezzi.forEach((input, index) => {
+            const val = originalPrezzi[index].value;
+            input.closest('td').textContent = val ? `€ ${val}` : '';
+        });
+
+        // Trasformiamo le celle Note in testo semplice
+        const originalNoteCells = table.querySelectorAll('td.note-cell');
+        const cloneNoteCells = tableClone.querySelectorAll('td.note-cell');
+        cloneNoteCells.forEach((cell, index) => {
+            const btn = originalNoteCells[index].querySelector('.note-btn');
+            cell.textContent = btn ? btn.dataset.value || '' : '';
         });
 
         // 5. Creazione del file Excel (Workbook)

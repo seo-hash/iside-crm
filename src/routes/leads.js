@@ -109,7 +109,7 @@ router.patch('/:rowIndex/status', async (req, res) => {
     const workedColumn = 'S';
 
     await leadsService.updateLeadStatus(sId, sRange, rowIndex, status, statusColumn, workedColumn);
-    
+
     cache.timestamp = 0; // Invalida cache
     res.json({ message: 'Stato aggiornato correttamente.' });
   } catch (error) {
@@ -117,6 +117,7 @@ router.patch('/:rowIndex/status', async (req, res) => {
     res.status(500).json({ error: error.message || 'Errore durante l\'aggiornamento dello stato.' });
   }
 });
+
 
 // --- FUNZIONI DI SUPPORTO ---
 

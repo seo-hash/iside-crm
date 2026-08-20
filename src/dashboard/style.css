@@ -343,6 +343,125 @@ body {
 .badge-chiamato { background: #ecfeff; color: #0e7490; }
 .badge-tentativo { background: #f5f3ff; color: #6d28d9; }
 
+/* Note & Prezzo cells */
+.note-cell, .prezzo-cell {
+    position: relative;
+    white-space: nowrap;
+}
+
+.note-wrap {
+    display: inline-flex;
+}
+
+.note-btn {
+    border: none;
+    background: #f1f5f9;
+    color: var(--text-muted);
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 0.9rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, transform 0.15s;
+}
+
+.note-btn:hover { background: #e2e8f0; transform: scale(1.08); }
+
+.note-btn.has-note {
+    background: #fef3c7;
+    box-shadow: 0 0 0 2px #fde68a inset;
+}
+
+.note-popover {
+    position: fixed;
+    z-index: 1000;
+    background: var(--bg-card, #fff);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md, 8px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    padding: 0.5rem;
+    width: 240px;
+    max-width: calc(100vw - 1rem);
+}
+
+.note-popover textarea {
+    width: 100%;
+    min-height: 70px;
+    resize: vertical;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 0.4rem;
+    font-size: 0.8rem;
+    font-family: inherit;
+}
+
+.note-popover-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.4rem;
+    margin-top: 0.4rem;
+}
+
+.note-popover-actions button {
+    border: none;
+    border-radius: 6px;
+    padding: 0.3rem 0.7rem;
+    font-size: 0.75rem;
+    cursor: pointer;
+}
+
+.note-save-btn { background: var(--accent-success, #10b981); color: #fff; }
+.note-cancel-btn { background: #f1f5f9; color: var(--text-secondary); }
+
+.prezzo-wrap {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: #f8fafc;
+    overflow: hidden;
+    transition: box-shadow 0.2s, background 0.2s, border-color 0.2s;
+}
+
+.prezzo-wrap:focus-within { border-color: var(--accent-success, #10b981); }
+
+.prezzo-currency {
+    padding: 0.35rem 0 0.35rem 0.5rem;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    user-select: none;
+}
+
+.prezzo-input {
+    width: 80px;
+    padding: 0.35rem 0.5rem;
+    border: none;
+    background: transparent;
+    font-size: 0.8rem;
+    text-align: right;
+    -moz-appearance: textfield;
+}
+
+.prezzo-input:focus { outline: none; }
+
+.prezzo-wrap.prezzo-chiuso {
+    background: #dcfce7;
+    border-color: #86efac;
+}
+
+.prezzo-wrap.prezzo-chiuso .prezzo-currency,
+.prezzo-wrap.prezzo-chiuso .prezzo-input {
+    color: #15803d;
+    font-weight: 600;
+}
+
+.prezzo-wrap.prezzo-saved {
+    box-shadow: 0 0 0 2px #10b981;
+}
+
 /* Analytics Grid */
 .analytics-grid {
     display: grid;
@@ -506,6 +625,26 @@ body {
 }
 
 /* Responsive */
+
+/* Laptop piccoli (12"-13", ~1024-1366px reali / ~1280px logici) */
+@media (max-width: 1366px) {
+    .main-content {
+        margin-left: 220px;
+        padding: 1.5rem;
+    }
+    .sidebar {
+        width: 220px;
+    }
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.85rem;
+    }
+    .analytics-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+}
+
 @media (max-width: 1024px) {
     .analytics-grid {
         grid-template-columns: 1fr;
@@ -618,6 +757,16 @@ body {
     }
     .clear-filter {
         align-self: flex-end;
+    }
+    .note-btn {
+        width: 36px;
+        height: 36px;
+    }
+    .prezzo-input {
+        width: 64px;
+    }
+    .note-popover {
+        width: calc(100vw - 1.5rem);
     }
 }
 /* Sidebar Logo - Versione compatta */

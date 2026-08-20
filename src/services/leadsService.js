@@ -97,7 +97,8 @@ const leadsService = {
       console.error('❌ Errore update status/worked date:', error.message);
       throw new Error('Impossibile aggiornare il lead su Google Sheets.');
     }
-  }
+  },
+
 };
 
 module.exports = leadsService;
