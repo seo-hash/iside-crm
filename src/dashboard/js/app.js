@@ -526,6 +526,7 @@ function buildPrezzoCell(rowId, source, prezzo, stato) {
 async function saveLeadDetails(rowId, source, payload) {
     setCrmDetail(source, rowId, payload);
     showToast('Salvato');
+    renderRoasStats();
     return true;
 }
 
@@ -633,7 +634,53 @@ function renderAnalyticsStats(stats) {
 
     const topSourceElement = document.getElementById('analytics-top-source');
     if (topSourceElement) topSourceElement.innerText = computeTopTipoEvento();
+
+    renderRoasStats();
 }
+
+// Spesa pubblicitaria fissa per le sponsorizzate (Eventi Piscina + Chiamate,
+// che pur essendo inserite manualmente fanno parte dello stesso investimento pubblicitario)
+const ROAS_SPESA_FISSA = 300;
+const ROAS_SOURCES = ['facebook', 'chiamate'];
+
+function computeRoasStats() {
+    let incasso = 0;
+
+    ROAS_SOURCES.forEach(source => {
+        (rawBySource[source] || []).forEach((row, i) => {
+            const rowIndex = i + 2;
+            const stato = row[META_COL.stato] || 'Nuovo';
+            if (stato !== 'Convertito') return;
+
+            const detail = getCrmDetail(source, rowIndex);
+            const prezzo = parseFloat(String(detail.prezzo || '').replace(',', '.'));
+            if (!isNaN(prezzo)) incasso += prezzo;
+        });
+    });
+
+    const spesa = ROAS_SPESA_FISSA;
+    const margine = incasso - spesa;
+    const roas = spesa > 0 ? (incasso / spesa) : 0;
+
+    return { spesa, incasso, margine, roas };
+}
+
+function renderRoasStats() {
+    const spesaEl = document.getElementById('roas-spesa');
+    if (!spesaEl) return;
+
+    const { spesa, incasso, margine, roas } = computeRoasStats();
+
+    spesaEl.innerText = `€ ${spesa.toLocaleString('it-IT')}`;
+    document.getElementById('roas-incasso').innerText = `€ ${incasso.toLocaleString('it-IT')}`;
+
+    const margineEl = document.getElementById('roas-margine');
+    margineEl.innerText = `€ ${margine.toLocaleString('it-IT')}`;
+    margineEl.style.color = margine >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)';
+
+    document.getElementById('roas-value').innerText = `${roas.toFixed(2)}x`;
+}
+
 function renderChartsWithRealData() {
     if (typeof Chart === 'undefined') return;
     
