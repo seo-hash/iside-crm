@@ -8,35 +8,10 @@ const META_COL = {
     nome: 14,
     tel: 15,
     stato: 17,
-    lavorazione: 18
+    lavorazione: 18,
+    note: 19,
+    prezzo: 20
 };
-
-// Note e Prezzo sono gestiti solo lato CRM (localStorage), non sul foglio Google
-const CRM_DETAILS_KEY = 'crm_lead_details';
-
-function loadCrmDetails() {
-    try { return JSON.parse(localStorage.getItem(CRM_DETAILS_KEY)) || {}; } catch(e) { return {}; }
-}
-
-function saveCrmDetails(details) {
-    try { localStorage.setItem(CRM_DETAILS_KEY, JSON.stringify(details)); } catch(e) {}
-}
-
-function crmDetailKey(source, rowId) {
-    return `${source}_${rowId}`;
-}
-
-function getCrmDetail(source, rowId) {
-    const details = loadCrmDetails();
-    return details[crmDetailKey(source, rowId)] || { note: '', prezzo: '' };
-}
-
-function setCrmDetail(source, rowId, patch) {
-    const details = loadCrmDetails();
-    const key = crmDetailKey(source, rowId);
-    details[key] = { ...(details[key] || { note: '', prezzo: '' }), ...patch };
-    saveCrmDetails(details);
-}
 
 let rawBySource = { facebook: [], compleanni: [], eventi: [], chiamate: [] };
 let currentSource = 'tutti';
@@ -190,13 +165,11 @@ function initChiamataModal() {
             showToast('Lead aggiunto con successo');
             await fetchData();
 
-            // Il prezzo è gestito lato CRM (localStorage, come per gli altri lead):
+            // Il prezzo viene salvato sul foglio Google (colonna U), condiviso tra tutti gli utenti:
             // la nuova riga è l'ultima del foglio "Chiamate" appena ricaricato.
             if (prezzo) {
                 const newRowIndex = rawBySource.chiamate.length + 1;
-                setCrmDetail('chiamate', newRowIndex, { prezzo });
-                updateTableStructure();
-                if (applyActiveFilters) applyActiveFilters();
+                await saveLeadDetails(newRowIndex, 'chiamate', { prezzo });
             }
         } catch (err) {
             showToast(err.message || 'Errore durante il salvataggio.', 'error');
@@ -291,9 +264,8 @@ function mapMetaLead(row, rowIndex, source = 'facebook', includeOrigin = false) 
     let stato = row[META_COL.stato] || 'Nuovo';
     if (stato === '') stato = 'Nuovo';
 
-    const crmDetail = getCrmDetail(source, rowIndex);
-    const note = crmDetail.note || '';
-    const prezzo = crmDetail.prezzo || '';
+    const note = row[META_COL.note] || '';
+    const prezzo = row[META_COL.prezzo] || '';
 
     // Il numero arriva dal foglio con prefisso "p:" (formato Meta)
     const tel = (row[META_COL.tel] || '-').replace(/^p:/, '');
@@ -384,7 +356,33 @@ function renderTableUnified(headers, leads) {
         }
         tbody.appendChild(tr);
     });
+
+    updateTableScrollHint();
 }
+
+function updateTableScrollHint() {
+    const container = document.getElementById('tableContainer');
+    const hint = document.getElementById('tableScrollHint');
+    const fadeEdge = document.getElementById('tableFadeEdge');
+    if (!container || !hint || !fadeEdge) return;
+
+    const isScrollable = container.scrollWidth > container.clientWidth + 1;
+    hint.classList.toggle('is-scrollable', isScrollable);
+    fadeEdge.classList.toggle('is-scrollable', isScrollable);
+
+    if (!isScrollable) return;
+
+    const distanceFromEnd = container.scrollWidth - container.clientWidth - container.scrollLeft;
+    fadeEdge.classList.toggle('is-hidden', distanceFromEnd < 4);
+}
+
+(function setupTableScrollHint() {
+    const container = document.getElementById('tableContainer');
+    if (!container) return;
+
+    container.addEventListener('scroll', updateTableScrollHint, { passive: true });
+    window.addEventListener('resize', updateTableScrollHint);
+})();
 
 function buildNoteCell(rowId, source, note) {
     const cleanNote = (note && note !== '-') ? note : '';
@@ -524,10 +522,24 @@ function buildPrezzoCell(rowId, source, prezzo, stato) {
 }
 
 async function saveLeadDetails(rowId, source, payload) {
-    setCrmDetail(source, rowId, payload);
-    showToast('Salvato');
-    renderRoasStats();
-    return true;
+    try {
+        const resp = await fetch(`/api/leads/${rowId}/details?source=${source}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (!resp.ok) {
+            const errorData = await resp.json().catch(() => ({}));
+            showToast(errorData.error || 'Errore durante il salvataggio.', 'error');
+            return false;
+        }
+        showToast('Salvato');
+        await fetchData();
+        return true;
+    } catch (e) {
+        showToast('Errore di rete', 'error');
+        return false;
+    }
 }
 
 function getStatusSelectHTML(rowId, source, currentStatus) {
@@ -647,13 +659,11 @@ function computeRoasStats() {
     let incasso = 0;
 
     ROAS_SOURCES.forEach(source => {
-        (rawBySource[source] || []).forEach((row, i) => {
-            const rowIndex = i + 2;
+        (rawBySource[source] || []).forEach((row) => {
             const stato = row[META_COL.stato] || 'Nuovo';
             if (stato !== 'Convertito') return;
 
-            const detail = getCrmDetail(source, rowIndex);
-            const prezzo = parseFloat(String(detail.prezzo || '').replace(',', '.'));
+            const prezzo = parseFloat(String(row[META_COL.prezzo] || '').replace(',', '.'));
             if (!isNaN(prezzo)) incasso += prezzo;
         });
     });

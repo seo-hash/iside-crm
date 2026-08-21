@@ -99,6 +99,27 @@ const leadsService = {
     }
   },
 
+  /**
+   * Aggiorna una singola cella (colonna lettera) in una riga specifica
+   */
+  async updateCell(spreadsheetId, rawRange, rowIndex, column, value) {
+    try {
+      const targetRange = formatRange(rawRange);
+      const sheetName = targetRange.split('!')[0].replace(/'/g, '');
+      const cell = `'${sheetName}'!${column}${rowIndex}`;
+      await sheets.spreadsheets.values.update({
+        spreadsheetId,
+        range: cell,
+        valueInputOption: 'USER_ENTERED',
+        resource: { values: [[value]] },
+      });
+      return true;
+    } catch (error) {
+      console.error('❌ Errore update cella:', error.message);
+      throw new Error('Impossibile aggiornare il lead su Google Sheets.');
+    }
+  },
+
 };
 
 module.exports = leadsService;

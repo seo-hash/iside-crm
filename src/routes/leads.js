@@ -124,6 +124,42 @@ router.patch('/:rowIndex/status', async (req, res) => {
 
 
 /**
+ * Aggiorna Note e/o Prezzo di un lead (colonne T e U, condivise tra tutti gli utenti)
+ */
+router.patch('/:rowIndex/details', async (req, res) => {
+  try {
+    const { rowIndex } = req.params;
+    const { note, prezzo } = req.body;
+    const { source } = req.query;
+
+    const RANGE_BY_SOURCE = {
+      facebook: process.env.RANGE_DATI,
+      compleanni: process.env.RANGE_COMPLEANNI,
+      eventi: process.env.RANGE_EVENTI,
+      chiamate: process.env.RANGE_CHIAMATE
+    };
+
+    const sId = process.env.SPREADSHEET_ID_DATI;
+    const sRange = RANGE_BY_SOURCE[source] || process.env.RANGE_DATI;
+    const noteColumn = 'T';
+    const prezzoColumn = 'U';
+
+    if (note !== undefined) {
+      await leadsService.updateCell(sId, sRange, rowIndex, noteColumn, note);
+    }
+    if (prezzo !== undefined) {
+      await leadsService.updateCell(sId, sRange, rowIndex, prezzoColumn, prezzo);
+    }
+
+    cache.timestamp = 0; // Invalida cache
+    res.json({ message: 'Dettagli aggiornati correttamente.' });
+  } catch (error) {
+    console.error('❌ Errore aggiornamento dettagli:', error.message);
+    res.status(500).json({ error: error.message || 'Errore durante l\'aggiornamento dei dettagli.' });
+  }
+});
+
+/**
  * Crea un nuovo lead inserito manualmente da una chiamata telefonica.
  * Usa lo stesso layout di colonne (A:W) delle altre sorgenti:
  * B=data, M=tipoEvento, O=nome, R=stato
