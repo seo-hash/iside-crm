@@ -173,9 +173,7 @@ function initChiamataModal() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     nome: document.getElementById('chiamataNome').value,
-                    telefono: document.getElementById('chiamataTel').value,
-                    tipoEvento: document.getElementById('chiamataTipoEvento').value,
-                    nPersone: document.getElementById('chiamataNPersone').value
+                    tipoEvento: document.getElementById('chiamataTipoEvento').value
                 })
             });
             const data = await res.json();

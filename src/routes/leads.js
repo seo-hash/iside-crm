@@ -126,14 +126,13 @@ router.patch('/:rowIndex/status', async (req, res) => {
 /**
  * Crea un nuovo lead inserito manualmente da una chiamata telefonica.
  * Usa lo stesso layout di colonne (A:W) delle altre sorgenti:
- * B=data, M=tipoEvento, N=nPersone, O=nome, P=telefono, R=stato
+ * B=data, M=tipoEvento, O=nome, R=stato
  */
 router.post('/chiamate', async (req, res) => {
   try {
-    const { nome, telefono, tipoEvento, nPersone } = req.body;
+    const { nome, tipoEvento } = req.body;
 
     if (!nome || !nome.trim()) return res.status(400).json({ error: 'Il nome è obbligatorio.' });
-    if (!telefono || !telefono.trim()) return res.status(400).json({ error: 'Il telefono è obbligatorio.' });
 
     const sId = process.env.SPREADSHEET_ID_DATI;
     const sRange = process.env.RANGE_CHIAMATE;
@@ -145,9 +144,7 @@ router.post('/chiamate', async (req, res) => {
     const row = new Array(23).fill('');
     row[1] = new Date().toLocaleString('it-IT'); // B: data
     row[12] = (tipoEvento || '').trim();          // M: tipo evento
-    row[13] = (nPersone || '').trim();             // N: n persone
     row[14] = nome.trim();                          // O: nome
-    row[15] = telefono.trim();                      // P: telefono
     row[17] = 'Nuovo';                               // R: stato CRM
 
     await leadsService.appendRow(sId, sRange, row);
