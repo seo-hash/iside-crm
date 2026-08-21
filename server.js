@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const cookieParser = require('cookie-parser');
 const path = require('path');
 const dotenv = require('dotenv');
 
@@ -21,6 +22,18 @@ app.use(cors({
 // Parsing body
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
+
+// Asset pubblici (logo, ecc.) usati anche dalla pagina di login - NON protetti
+app.use('/public', express.static(path.join(__dirname, 'public')));
+
+// Rotte di autenticazione (login/logout) - NON protette
+const authRoutes = require('./src/routes/auth');
+app.use(authRoutes);
+
+// Guardia di accesso per tutto ciò che segue (dashboard e API)
+const { authGuard } = require('./src/middleware/authGuard');
+app.use(authGuard);
 
 // Serve Dashboard Statica (Opzionale, utile per hosting unico)
 app.use('/dashboard', express.static(path.join(__dirname, 'src/dashboard')));
