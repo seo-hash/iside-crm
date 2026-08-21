@@ -38,11 +38,11 @@ function setCrmDetail(source, rowId, patch) {
     saveCrmDetails(details);
 }
 
-let rawBySource = { facebook: [], compleanni: [], eventi: [] };
+let rawBySource = { facebook: [], compleanni: [], eventi: [], chiamate: [] };
 let currentSource = 'tutti';
 let rawLeads = [];
 let allLeads = [];
-const SOURCE_LABELS = { facebook: 'Eventi Piscina', compleanni: 'Compleanno Bimbi', eventi: 'Eventi Privati/Aziendali' };
+const SOURCE_LABELS = { facebook: 'Eventi Piscina', compleanni: 'Compleanno Bimbi', eventi: 'Eventi Privati/Aziendali', chiamate: 'Chiamate' };
 const HEADERS_DEFAULT = ["Data", "Nome Completo", "Telefono", "Tipo Evento", "N° Persone", "Stato", "Note", "Prezzo"];
 const HEADERS_TUTTI = ["Data", "Nome Completo", "Telefono", "Tipo Evento", "N° Persone", "Origine", "Stato", "Note", "Prezzo"];
 let currentHeaders = HEADERS_TUTTI;
@@ -57,6 +57,8 @@ document.addEventListener('DOMContentLoaded', () => {
     initNavigation();
     initFilters();
     initLeadTabs();
+    initChiamataModal();
+    toggleAddChiamataButton();
 
     setInterval(fetchData, 300000);
     document.getElementById('refreshBtn').addEventListener('click', () => {
@@ -104,6 +106,7 @@ function processAllData(data) {
     rawBySource.facebook = stripHeader(data.facebookLeads);
     rawBySource.compleanni = stripHeader(data.compleanniLeads);
     rawBySource.eventi = stripHeader(data.eventiLeads);
+    rawBySource.chiamate = stripHeader(data.chiamateLeads);
 
     const stats = data.stats || {};
     const config = data.config || {};
@@ -128,7 +131,63 @@ function initLeadTabs() {
             renderStatsCards(currentStats);
             renderAnalyticsStats(currentStats);
             renderChartsWithRealData();
+            toggleAddChiamataButton();
         });
+    });
+}
+
+function toggleAddChiamataButton() {
+    const btn = document.getElementById('addChiamataBtn');
+    if (btn) btn.style.display = currentSource === 'chiamate' ? 'inline-flex' : 'none';
+}
+
+function initChiamataModal() {
+    const modal = document.getElementById('chiamataModal');
+    const form = document.getElementById('chiamataForm');
+    const openBtn = document.getElementById('addChiamataBtn');
+    const closeBtn = document.getElementById('closeChiamataModal');
+    const cancelBtn = document.getElementById('cancelChiamataBtn');
+    const submitBtn = document.getElementById('submitChiamataBtn');
+    if (!modal || !form || !openBtn) return;
+
+    const closeModal = () => {
+        modal.style.display = 'none';
+        form.reset();
+    };
+
+    openBtn.addEventListener('click', () => { modal.style.display = 'flex'; });
+    closeBtn.addEventListener('click', closeModal);
+    cancelBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Salvataggio...';
+
+        try {
+            const res = await fetch('/api/leads/chiamate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    nome: document.getElementById('chiamataNome').value,
+                    telefono: document.getElementById('chiamataTel').value,
+                    tipoEvento: document.getElementById('chiamataTipoEvento').value,
+                    nPersone: document.getElementById('chiamataNPersone').value
+                })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Errore durante il salvataggio.');
+
+            closeModal();
+            showToast('Lead aggiunto con successo');
+            await fetchData();
+        } catch (err) {
+            showToast(err.message || 'Errore durante il salvataggio.', 'error');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Salva Lead';
+        }
     });
 }
 
@@ -191,7 +250,7 @@ function prezzoIndex() {
 function updateTableStructure() {
     if (currentSource === 'tutti') {
         currentHeaders = HEADERS_TUTTI;
-        allLeads = ['facebook', 'compleanni', 'eventi'].flatMap(source =>
+        allLeads = ['facebook', 'compleanni', 'eventi', 'chiamate'].flatMap(source =>
             (rawBySource[source] || []).map((row, i) => mapMetaLead(row, i + 2, source, true))
         );
     } else {

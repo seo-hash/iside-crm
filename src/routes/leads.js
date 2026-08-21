@@ -32,17 +32,19 @@ router.get('/all-data', async (req, res) => {
         })
       : Promise.resolve([]);
 
-    const [googleFormRows, facebookRows, compleanniRows, eventiRows] = await Promise.all([
+    const [googleFormRows, facebookRows, compleanniRows, eventiRows, chiamateRows] = await Promise.all([
       readSheet(process.env.SPREADSHEET_ID_MODULO, process.env.RANGE_MODULO),  // Google Form
       readSheet(process.env.SPREADSHEET_ID_DATI, process.env.RANGE_DATI),      // Facebook Ads
       readSheet(process.env.SPREADSHEET_ID_DATI, process.env.RANGE_COMPLEANNI), // Compleanno_bimbi
-      readSheet(process.env.SPREADSHEET_ID_DATI, process.env.RANGE_EVENTI)      // Eventi_privati_aziendali
+      readSheet(process.env.SPREADSHEET_ID_DATI, process.env.RANGE_EVENTI),     // Eventi_privati_aziendali
+      readSheet(process.env.SPREADSHEET_ID_DATI, process.env.RANGE_CHIAMATE)    // Chiamate (inserite a mano)
     ]);
 
     console.log(`✅ Google Form: ${googleFormRows?.length || 0} righe lette`);
     console.log(`✅ Facebook Ads: ${facebookRows?.length || 0} righe lette`);
     console.log(`✅ Compleanno_bimbi: ${compleanniRows?.length || 0} righe lette`);
     console.log(`✅ Eventi_privati_aziendali: ${eventiRows?.length || 0} righe lette`);
+    console.log(`✅ Chiamate: ${chiamateRows?.length || 0} righe lette`);
 
     if (googleFormRows && googleFormRows.length > 0) {
       console.log('📋 Google Form headers:', googleFormRows[0]);
@@ -58,6 +60,7 @@ router.get('/all-data', async (req, res) => {
       facebookLeads: facebookRows || [],      // ← ATTENZIONE: nome corretto per frontend
       compleanniLeads: compleanniRows || [],
       eventiLeads: eventiRows || [],
+      chiamateLeads: chiamateRows || [],
       stats: stats,
       config: {
         spreadsheetId: process.env.SPREADSHEET_ID_DATI,
@@ -100,7 +103,8 @@ router.patch('/:rowIndex/status', async (req, res) => {
     const RANGE_BY_SOURCE = {
       facebook: process.env.RANGE_DATI,
       compleanni: process.env.RANGE_COMPLEANNI,
-      eventi: process.env.RANGE_EVENTI
+      eventi: process.env.RANGE_EVENTI,
+      chiamate: process.env.RANGE_CHIAMATE
     };
 
     const sId = process.env.SPREADSHEET_ID_DATI;
@@ -118,6 +122,43 @@ router.patch('/:rowIndex/status', async (req, res) => {
   }
 });
 
+
+/**
+ * Crea un nuovo lead inserito manualmente da una chiamata telefonica.
+ * Usa lo stesso layout di colonne (A:W) delle altre sorgenti:
+ * B=data, M=tipoEvento, N=nPersone, O=nome, P=telefono, R=stato
+ */
+router.post('/chiamate', async (req, res) => {
+  try {
+    const { nome, telefono, tipoEvento, nPersone } = req.body;
+
+    if (!nome || !nome.trim()) return res.status(400).json({ error: 'Il nome è obbligatorio.' });
+    if (!telefono || !telefono.trim()) return res.status(400).json({ error: 'Il telefono è obbligatorio.' });
+
+    const sId = process.env.SPREADSHEET_ID_DATI;
+    const sRange = process.env.RANGE_CHIAMATE;
+    if (!sId || !sRange) {
+      return res.status(500).json({ error: 'Foglio "Chiamate" non configurato (RANGE_CHIAMATE mancante).' });
+    }
+
+    // Riga vuota di 23 colonne (A..W), valorizziamo solo le colonne usate dal CRM
+    const row = new Array(23).fill('');
+    row[1] = new Date().toLocaleString('it-IT'); // B: data
+    row[12] = (tipoEvento || '').trim();          // M: tipo evento
+    row[13] = (nPersone || '').trim();             // N: n persone
+    row[14] = nome.trim();                          // O: nome
+    row[15] = telefono.trim();                      // P: telefono
+    row[17] = 'Nuovo';                               // R: stato CRM
+
+    await leadsService.appendRow(sId, sRange, row);
+
+    cache.timestamp = 0; // Invalida cache
+    res.status(201).json({ message: 'Lead da chiamata aggiunto correttamente.' });
+  } catch (error) {
+    console.error('❌ Errore creazione lead da chiamata:', error.message);
+    res.status(500).json({ error: error.message || 'Errore durante il salvataggio del lead.' });
+  }
+});
 
 // --- FUNZIONI DI SUPPORTO ---
 
