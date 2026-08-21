@@ -43,7 +43,19 @@ document.addEventListener('DOMContentLoaded', () => {
         fetchData().finally(() => { setTimeout(() => { btn.disabled = false; }, 30000); });
     });
   document.getElementById('exportBtn').addEventListener('click', exportExcel);
+
+  const logoutBtn = document.getElementById('logoutBtn');
+  if (logoutBtn) logoutBtn.addEventListener('click', logout);
 });
+
+async function logout() {
+    try {
+        await fetch('/api/auth/logout', { method: 'POST' });
+    } catch (e) {
+        // Ignora errori di rete: reindirizza comunque al login
+    }
+    window.location.href = '/login';
+}
 
 async function fetchData() {
     try {
