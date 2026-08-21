@@ -166,6 +166,8 @@ function initChiamataModal() {
         submitBtn.textContent = 'Salvataggio...';
 
         try {
+            const prezzo = document.getElementById('chiamataPrezzo').value.trim();
+
             const res = await fetch('/api/leads/chiamate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -182,6 +184,15 @@ function initChiamataModal() {
             closeModal();
             showToast('Lead aggiunto con successo');
             await fetchData();
+
+            // Il prezzo è gestito lato CRM (localStorage, come per gli altri lead):
+            // la nuova riga è l'ultima del foglio "Chiamate" appena ricaricato.
+            if (prezzo) {
+                const newRowIndex = rawBySource.chiamate.length + 1;
+                setCrmDetail('chiamate', newRowIndex, { prezzo });
+                updateTableStructure();
+                if (applyActiveFilters) applyActiveFilters();
+            }
         } catch (err) {
             showToast(err.message || 'Errore durante il salvataggio.', 'error');
         } finally {
