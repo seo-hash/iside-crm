@@ -130,7 +130,7 @@ router.patch('/:rowIndex/status', async (req, res) => {
  */
 router.post('/chiamate', async (req, res) => {
   try {
-    const { nome, tipoEvento } = req.body;
+    const { nome, tipoEvento, data } = req.body;
 
     if (!nome || !nome.trim()) return res.status(400).json({ error: 'Il nome è obbligatorio.' });
 
@@ -140,9 +140,14 @@ router.post('/chiamate', async (req, res) => {
       return res.status(500).json({ error: 'Foglio "Chiamate" non configurato (RANGE_CHIAMATE mancante).' });
     }
 
+    // Data scelta dall'utente (YYYY-MM-DD dall'input type="date") o, in mancanza, adesso
+    const dataLead = (data && data.trim())
+      ? new Date(`${data.trim()}T00:00:00`).toLocaleDateString('it-IT')
+      : new Date().toLocaleString('it-IT');
+
     // Riga vuota di 23 colonne (A..W), valorizziamo solo le colonne usate dal CRM
     const row = new Array(23).fill('');
-    row[1] = new Date().toLocaleString('it-IT'); // B: data
+    row[1] = dataLead;                              // B: data
     row[12] = (tipoEvento || '').trim();          // M: tipo evento
     row[14] = nome.trim();                          // O: nome
     row[17] = 'Nuovo';                               // R: stato CRM

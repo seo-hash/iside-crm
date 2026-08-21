@@ -155,7 +155,13 @@ function initChiamataModal() {
         form.reset();
     };
 
-    openBtn.addEventListener('click', () => { modal.style.display = 'flex'; });
+    openBtn.addEventListener('click', () => {
+        const dataInput = document.getElementById('chiamataData');
+        if (dataInput && !dataInput.value) {
+            dataInput.value = new Date().toISOString().slice(0, 10);
+        }
+        modal.style.display = 'flex';
+    });
     closeBtn.addEventListener('click', closeModal);
     cancelBtn.addEventListener('click', closeModal);
     modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
@@ -173,6 +179,7 @@ function initChiamataModal() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     nome: document.getElementById('chiamataNome').value,
+                    data: document.getElementById('chiamataData').value,
                     tipoEvento: document.getElementById('chiamataTipoEvento').value
                 })
             });
